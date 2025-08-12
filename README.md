@@ -67,5 +67,5 @@ The workflow follows the original **Invoice & Payments System** PDF:
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/your-username/invoice-to-cash-workflow.git
-cd invoice-to-cash-workflow
+git clone https://github.com/your-username/Invoice-payments
+cd Invoice-payments
