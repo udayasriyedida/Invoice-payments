@@ -731,9 +731,9 @@ def end_workflow(state: InvoiceState) -> InvoiceState:
 # 5. CORRECTED ROUTING FUNCTIONS
 # ──────────────────────────────────────────────────────────────────────────────
 
-def route_after_milestone_check(state: InvoiceState) -> Literal["log", "monitor"]:
+def route_after_milestone_check(state: InvoiceState) -> Literal["trigger", "monitor"]:
     """CORRECTED: C → D (if yes) or C → G (if no)"""
-    return "log" if state.get("milestone_complete") else "monitor"
+    return "trigger" if state.get("milestone_complete") else "monitor"
 
 
 def route_after_monitor(state: InvoiceState) -> Literal["check_payment"]:
@@ -797,9 +797,9 @@ def build_complete_workflow():
 
     # Add all nodes
     sg.add_node("start",           start_project)                 # A
-    sg.add_node("define_plan",     define_billing_plan)          # B (🆕 Invoice generated here)
+    sg.add_node("define_plan",     define_billing_plan)          # B 
     sg.add_node("check_milestone", check_milestone_completion)    # C (HIL)
-    # sg.add_node("trigger",         trigger_invoice)              # D (🗑️ Remove this node)
+    sg.add_node("trigger",         trigger_invoice)              # D 
     sg.add_node("log",             log_audit)                    # E
     sg.add_node("dispatch",        dispatch_invoice)             # F
     sg.add_node("monitor",         monitor_progress)             # G
@@ -821,13 +821,12 @@ def build_complete_workflow():
     sg.add_edge("start", "define_plan")                    # A → B (Invoice generated here)
     sg.add_edge("define_plan", "check_milestone")          # B → C (Go to milestone check)
     
-    # 🆕 ROUTING BASED ON C DECISION:
-    # If YES: C → E → F → G → H (Log, Dispatch, Monitor, Payment Check)
-    # If NO:  C → G → H (Skip to Monitor, Payment Check)
+    # C decision routing
     sg.add_conditional_edges("check_milestone", route_after_milestone_check,
-                             {"log": "log", "monitor": "monitor"})
+                             {"trigger": "trigger", "monitor": "monitor"})
     
-    # E → F → G (when milestone is complete)
+    # E → F → G sequence
+    sg.add_edge("trigger", "log")                          # D → E
     sg.add_edge("log", "dispatch")                         # E → F  
     sg.add_edge("dispatch", "monitor")                     # F → G
     
@@ -909,4 +908,5 @@ if __name__ == "__main__":
     
     except Exception as e:
         print(f"❌ Error: {e}")
+
 
