@@ -563,38 +563,32 @@ def reconcile_payment(state: InvoiceState) -> InvoiceState:                     
     }
 
 
-def mark_milestone_paid(state: InvoiceState) -> InvoiceState:                     # J
-    current_milestone = state["current_milestone"]
-    milestone_id = current_milestone["id"]
-    milestone_name = current_milestone["name"]
+def mark_milestone_paid(state: InvoiceState) -> InvoiceState:  # J
     current_index = state.get("current_milestone_index", 0)
-    total_milestones = len(state.get("milestones", []))
-    
-    has_more_milestones = current_index + 1 < total_milestones
+    total = len(state.get("milestones", []))
     
     result = {
         "milestone_paid": True,
-        "audit_log": [f"J: Milestone {milestone_id} '{milestone_name}' marked as PAID ({current_index + 1}/{total_milestones})"],
-        "messages": [AIMessage(content=f"✅ Milestone '{milestone_name}' paid")]
+        "old_milestone_index": current_index,  # 🔥 Store old index for routing
+        "audit_log": [f"J: Milestone '{state['current_milestone']['name']}' marked PAID ({current_index + 1}/{total})"],
+        "messages": [AIMessage(content=f"✅ Milestone '{state['current_milestone']['name']}' paid")]
     }
     
-    if has_more_milestones:
+    # Only advance if there are more milestones
+    if current_index + 1 < total:
         next_index = current_index + 1
         next_milestone = state["milestones"][next_index]
         result.update({
-            "current_milestone": next_milestone,
             "current_milestone_index": next_index,
+            "current_milestone": next_milestone,
             "milestone_complete": False,
             "payment_received": False,
             "payment_reconciled": False,
-            "milestone_paid": False,
-            "invoice_id": None,  # Reset for next milestone
+            "invoice_sent": False,   
             "invoice_amount": 0,
-            "invoice_sent": False,
             "invoice_date": None,
             "billing_invoice": {},
             "reminders_sent": 0,
-            "audit_log": [f"J: Next milestone prepared: {next_milestone['id']} '{next_milestone['name']}'"]
         })
     
     return result
@@ -846,7 +840,11 @@ def build_complete_workflow():
                              {"reconcile": "reconcile", "send_reminder": "send_reminder"})
     
     sg.add_edge("reconcile", "mark_paid")                  # I → J
-    sg.add_edge("mark_paid", "notify")                     # J → K
+    sg.add_conditional_edges(
+    "mark_paid",
+    lambda state: "notify" if state.get("old_milestone_index", 0) >= len(state.get("milestones", [])) - 1 else "check_milestone",
+    {"check_milestone": "check_milestone", "notify": "notify"}
+)
     sg.add_edge("notify", "settled")                       # K → L
     
     sg.add_conditional_edges("settled", route_after_payment_settled,
@@ -911,3 +909,4 @@ if __name__ == "__main__":
     
     except Exception as e:
         print(f"❌ Error: {e}")
+
