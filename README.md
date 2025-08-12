@@ -60,7 +60,6 @@ The workflow follows the original **Invoice & Payments System** PDF:
 - **Dynamic Workflow Routing** – Follows business logic exactly as in the PDF.
 - **Overdue Detection** – >30 days triggers reminder/escalation; >60 days triggers legal flag.
 - **Audit Logging** – Tracks every step for compliance.
-- **Email Reminders (extendable)** – Step M can integrate SMTP or SendGrid for real reminders.
 
 ---
 
